@@ -247,6 +247,10 @@ indexOtherLists(E,R):- delete([0,1,2],E,R).
 %get remaining stack
 dump([H|[T|_]],R):- delete([0,1,2],H,R1),delete(R1,T,[R|_]).
 
+%remove all instances of a list from another list
+removeFromList(X,[],X).
+removeFromList(X,[H|T],R):-delete(X,H,X1),removeFromList(X1,T,R).
+
 %smallest list excluding
 smallestListExcluding(B,E,T):-indexOtherLists(E,[H|[T|_]]), count_blocks(B,CB), el_at(CB,H,S1), el_at(CB,T,S2), S1>=S2.
 smallestListExcluding(B,E,H):-indexOtherLists(E,[H|[T|_]]), count_blocks(B,CB), el_at(CB,H,S1), el_at(CB,T,S2), S2>S1.
@@ -257,13 +261,15 @@ removeSortedBlocks([SH|_],[AH|AT],[AH|AT]):- SH \= AH.
 removeSortedBlocks([SH|ST],[AH|AT],R):- SH = AH, removeSortedBlocks(ST,AT,R).
 remainingBlocks(B,I,RB):- allBlocksSorted(B,ABS), el_at(B,I,S), removeSortedBlocks(S,ABS,RB).
 
-placeFirstBlock(B,B,LB,D,BX,0):-		allBlocksSorted(B,SB),
+%last sorted block in list
+lastSortedBlock(B,RB,I,R):- el_at(B,I,S), removeFromList(S,RB,SB), reverse(SB,[R|_]).
+
+placeFirstBlock(B,B,D,BX,0):-			allBlocksSorted(B,SB),
 										nextBlockPos(B,SB,BX,BY),
-										next(SB,LB),
 										smallestListExcluding(B,BX,SL),
 										dump([BX,SL],D),
 										BY=0.
-placeFirstBlock(B,B3,PB,D,SL,M):-		allBlocksSorted(B,SB),				%SB = all blocks sorted
+placeFirstBlock(B,B3,D,SL,M):-		allBlocksSorted(B,SB),				%SB = all blocks sorted
 										nextBlockPos(B,SB,BX,BY), 			%RB = remaining blocks after 1 popped off
 										BY\=0,
 										next(SB,PB),
@@ -284,11 +290,11 @@ sortBlocks(B,RB,M,FS,B3,TM):-	next(RB,NB),						%get next unsorted block
 								sortBlocks(B2,RB1,M2,FS,B3,M3),		%repeat
 								TM is M + M3.
 								
-order_blocks(B,NO2,M,LB):- 		print_status(B), 						%print starting order
-								placeFirstBlock(B,NO,LB,D,FS,M1),			%get first block to ground position
+order_blocks(B,NO2,M):- 		print_status(B), 						%print starting order
+								placeFirstBlock(B,NO,D,FS,M1),			%get first block to ground position
+								remainingBlocks(NO,FS,RB1),			%find out what blocks are left to arrange
+								lastSortedBlock(NO,RB1,FS,LB),
 								clearAbove(NO,LB,D,NO1,M2),
-								remainingBlocks(NO1,FS,RB1),				%find out what blocks are left to arrange
-								writeln('done'),
 								M3 is M1 + M2,
 								sortBlocks(NO1,RB1,M3,FS,NO2,M). 		%sort remaining blocks
 
