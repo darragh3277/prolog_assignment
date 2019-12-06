@@ -264,21 +264,35 @@ remainingBlocks(B,I,RB):- allBlocksSorted(B,ABS), el_at(B,I,S), removeSortedBloc
 %last sorted block in list
 lastSortedBlock(B,RB,I,R):- el_at(B,I,S), removeFromList(S,RB,SB), reverse(SB,[R|_]).
 
-placeFirstBlock(B,B,D,BX,0):-			allBlocksSorted(B,SB),
-										nextBlockPos(B,SB,BX,BY),
-										smallestListExcluding(B,BX,SL),
-										dump([BX,SL],D),
-										BY=0.
+%if first block is on the bottom and the next unsorted is in a different
+%stack return the remaining stack index as the dump
+placeFirstBlock(B,B,D,BX,0):-		allBlocksSorted(B,SB),
+									nextBlockPos(B,SB,BX,BY),
+									remainingBlocks(B,BX,[NB|_]),
+									blockPos(B,NB,NBX,_),
+									NBX \= BX,
+									dump([BX,NBX],D),
+									BY=0.
+%if first block is on the bottom and the next unsorted is in the same stack
+%find the index of the tallest remaining stack to use as the dump
+placeFirstBlock(B,B,D,BX,0):-		allBlocksSorted(B,SB),
+									nextBlockPos(B,SB,BX,BY),
+									remainingBlocks(B,BX,[NB|_]),
+									blockPos(B,NB,NBX,_),
+									NBX = BX,
+									smallestListExcluding(B,BX,SL),
+									dump([BX,SL],D),
+									BY=0.
 placeFirstBlock(B,B3,D,SL,M):-		allBlocksSorted(B,SB),				%SB = all blocks sorted
-										nextBlockPos(B,SB,BX,BY), 			%RB = remaining blocks after 1 popped off
-										BY\=0,
-										next(SB,PB),
-										smallestListExcluding(B,BX,SL),
-										dump([BX,SL],D),					%get the stack we are going to clear to
-										clearStack(B,SL,D,B1,M1),
-										clearAbove(B1,PB,D,B2,M2),
-										moveBlockIndex(B2,PB,BX,SL,B3),		%move first block to empty stack
-										M is M1 + M2 + 1.
+									nextBlockPos(B,SB,BX,BY), 			%RB = remaining blocks after 1 popped off
+									BY\=0,
+									next(SB,PB),
+									smallestListExcluding(B,BX,SL),
+									dump([BX,SL],D),					%get the stack we are going to clear to
+									clearStack(B,SL,D,B1,M1),
+									clearAbove(B1,PB,D,B2,M2),
+									moveBlockIndex(B2,PB,BX,SL,B3),		%move first block to empty stack
+									M is M1 + M2 + 1.
 
 sortBlocks(B,[],_,_,B,1).
 sortBlocks(B,RB,M,FS,B3,TM):-	next(RB,NB),						%get next unsorted block
@@ -289,15 +303,30 @@ sortBlocks(B,RB,M,FS,B3,TM):-	next(RB,NB),						%get next unsorted block
 								M2 is M1 + 1,
 								sortBlocks(B2,RB1,M2,FS,B3,M3),		%repeat
 								TM is M + M3.
-								
+
+%My process for ordering the blocks was
+%Print the initial state of the blocks
+%Find the first block
+	%If the block is not on the ground find the smaller of the remaining two stacks
+	%Clear the smallest of the stacks to the largest of the two stacks.
+	%Clear above the first block the large stack
+	%place A on the ground.
+	
+	%If the first block is on the ground already, find the next unorderd block.
+		%If next unorderd block is in the same stack, clear the smallest stack to the largest.
+		%If next unorderd block is in a different stack. Clear that stack to the remaining stack.
+	%Then find the next unorderd block in your stack and clear it and all blocks above to the dump stack.
+	
+%Finally use the recursive predicate to alternate pop blocks off the next unorderd block until it is the top block
+%then move that block onto to sorted stack.
+%Repeat until stack is all in order.
 order_blocks(B,NO2,M):- 		print_status(B), 						%print starting order
 								placeFirstBlock(B,NO,D,FS,M1),			%get first block to ground position
 								remainingBlocks(NO,FS,RB1),			%find out what blocks are left to arrange
 								lastSortedBlock(NO,RB1,FS,LB),
 								clearAbove(NO,LB,D,NO1,M2),
 								M3 is M1 + M2,
-								sortBlocks(NO1,RB1,M3,FS,NO2,M). 		%sort remaining blocks
-
+								sortBlocks(NO1,RB1,M3,FS,NO2,M). 		%sort remaining blocks								
 /*
 
 
